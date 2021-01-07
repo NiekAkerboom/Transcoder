@@ -4,20 +4,20 @@ import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.os.Build;
 
+import androidx.annotation.NonNull;
+
 import com.otaliastudios.transcoder.engine.TrackStatus;
 import com.otaliastudios.transcoder.internal.BitRates;
+import com.otaliastudios.transcoder.internal.Logger;
+import com.otaliastudios.transcoder.internal.MediaFormatConstants;
 import com.otaliastudios.transcoder.strategy.size.AspectRatioResizer;
 import com.otaliastudios.transcoder.strategy.size.AtMostResizer;
 import com.otaliastudios.transcoder.strategy.size.ExactResizer;
 import com.otaliastudios.transcoder.strategy.size.ExactSize;
 import com.otaliastudios.transcoder.strategy.size.FractionResizer;
 import com.otaliastudios.transcoder.strategy.size.MultiResizer;
-import com.otaliastudios.transcoder.strategy.size.Size;
 import com.otaliastudios.transcoder.strategy.size.Resizer;
-import com.otaliastudios.transcoder.internal.Logger;
-import com.otaliastudios.transcoder.internal.MediaFormatConstants;
-
-import androidx.annotation.NonNull;
+import com.otaliastudios.transcoder.strategy.size.Size;
 
 import java.util.List;
 
@@ -48,6 +48,19 @@ public class DefaultVideoStrategy implements TrackStrategy {
         private int targetFrameRate;
         private float targetKeyFrameInterval;
         private String targetMimeType;
+        private boolean allowPassThrough;
+    }
+
+    /**
+     * Creates a new {@link Builder} with a {@link Resizer} using given dimensions.
+     *
+     * @param resizer first resizer
+     * @return a strategy builder
+     */
+    @NonNull
+    @SuppressWarnings("WeakerAccess")
+    public static Builder resizer(Resizer resizer) {
+        return new Builder(resizer);
     }
 
     /**
@@ -123,6 +136,7 @@ public class DefaultVideoStrategy implements TrackStrategy {
         private long targetBitRate = BITRATE_UNKNOWN;
         private float targetKeyFrameInterval = DEFAULT_KEY_FRAME_INTERVAL;
         private String targetMimeType = MediaFormatConstants.MIMETYPE_VIDEO_AVC;
+        private boolean allowPassThrough = true;
 
         @SuppressWarnings("unused")
         public Builder() { }
@@ -189,6 +203,13 @@ public class DefaultVideoStrategy implements TrackStrategy {
             return this;
         }
 
+        @SuppressWarnings("unused")
+        @NonNull
+        public Builder allowPassThrough(boolean allowPassThrough) {
+            this.allowPassThrough = allowPassThrough;
+            return this;
+        }
+
         @NonNull
         @SuppressWarnings("WeakerAccess")
         public Options options() {
@@ -198,6 +219,7 @@ public class DefaultVideoStrategy implements TrackStrategy {
             options.targetBitRate = targetBitRate;
             options.targetKeyFrameInterval = targetKeyFrameInterval;
             options.targetMimeType = targetMimeType;
+            options.allowPassThrough = allowPassThrough;
             return options;
         }
 
@@ -264,7 +286,7 @@ public class DefaultVideoStrategy implements TrackStrategy {
         // or, for example, each part would be copied into output with its own size,
         // breaking the muxer.
         boolean canPassThrough = inputFormats.size() == 1;
-        if (canPassThrough && typeDone && sizeDone && frameRateDone && frameIntervalDone) {
+        if (options.allowPassThrough && canPassThrough && typeDone && sizeDone && frameRateDone && frameIntervalDone) {
             LOG.i("Input minSize: " + inSize.getMinor() + ", desired minSize: " + outSize.getMinor() +
                     "\nInput frameRate: " + inputFrameRate + ", desired frameRate: " + outFrameRate +
                     "\nInput iFrameInterval: " + inputIFrameInterval + ", desired iFrameInterval: " + options.targetKeyFrameInterval);
